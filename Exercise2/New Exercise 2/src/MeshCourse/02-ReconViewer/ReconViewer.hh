@@ -49,8 +49,8 @@
 #include "Implicit.h"
 #include <iostream>
 #include <fstream>
-
-
+#include "ImplicitRBF.hh"
+#include "RBFEvaluator.h"
 
 //== CLASS DEFINITION =========================================================
 
@@ -67,7 +67,7 @@ typedef OpenMesh::Vec3d                   Vec3d;
 class ReconViewer : public MeshViewer
 {
 public:
-   
+	
   /// default constructor
   ReconViewer(const char* _title, int _width, int _height);
 
@@ -90,9 +90,8 @@ protected:
   virtual void draw(const std::string& _draw_mode);
   std::vector<Point>   Points, Normals;
   float epsilon;
-
-private:
-
+  float beta;
+  RBFEvaluator rbfEvaluator;
 };
 
 

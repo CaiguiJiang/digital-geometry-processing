@@ -203,6 +203,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\src\MeshCourse\02-ReconViewer\RBFEvalutaor.cc"
+				>
+			</File>
+			<File
 				RelativePath="..\..\src\MeshCourse\02-ReconViewer\ReconViewer.cc"
 				>
 			</File>
@@ -246,6 +250,10 @@
 			</File>
 			<File
 				RelativePath="..\..\src\MeshCourse\02-ReconViewer\MeshViewer.hh"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\MeshCourse\02-ReconViewer\RBFEvaluator.h"
 				>
 			</File>
 			<File

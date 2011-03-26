@@ -12,7 +12,7 @@
 #include <vector>
 #include <gmm.h>
 #include "Implicit.h"
-
+#include "RBFEvaluator.h"
 
 //=============================================================================
 
@@ -20,17 +20,17 @@
 class ImplicitRBF: public Implicit
 {
 public:
-
+	
 	typedef OpenMesh::Vec3f            Vec3f;
 	typedef OpenMesh::Vec3d            Vec3d;
     typedef gmm::dense_matrix<double>  gmmMatrix;
 	typedef std::vector<double>        gmmVector;
-
 	
   // fit RBF to given constraints
   ImplicitRBF( const std::vector<Vec3f>& _points, 
                const std::vector<Vec3f>& _normals,
-               float& epsilon );
+               float& epsilon,
+			   RBFEvaluator* rbfEval);
 
 
   // evaluate RBF at position _p
@@ -39,21 +39,21 @@ public:
   
 
 private:
+	RBFEvaluator* rbfEvaluator;
 
 	// evaluate basis function of RBF
-	static double kernel(const Vec3d& _c, const Vec3d& _x)
+	double kernel(const Vec3d& _c, const Vec3d& _x) const
   {
     double r = (_x-_c).norm();
-    return r*r*r;
+	return rbfEvaluator->Evaluate(r);
   }  
 
 	// solve linear system _A * _x = _b
 	void solve_linear_system( gmmMatrix& _A, 
                             gmmVector& _b, 
-                            gmmVector& _x );
-  
-private:
+                            gmmVector& _x );    
 
+private:
   std::vector<Vec3d>   centers_;
   std::vector<double>  weights_;
 };

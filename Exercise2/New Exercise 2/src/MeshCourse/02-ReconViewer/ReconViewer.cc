@@ -66,8 +66,8 @@ ReconViewer(const char* _title, int _width, int _height)
 { 
   mesh_.request_vertex_colors();
   epsilon=0.01;
+  beta = 0.61;
   add_draw_mode("Point Cloud");
- 
 }
 
 
@@ -204,6 +204,7 @@ void ReconViewer::MeshFromFunction(Implicit* ImpFunc)
 
 		// isosurface extraction by Marching Cubes
 		std::cout << "Marching Cubes\n" << std::flush;
+		mesh_.clear();
 		marching_cubes(grid, mesh_); 
 
 		mesh_.update_normals();
@@ -265,7 +266,7 @@ ReconViewer::keyboard(int key, int x, int y)
 	//RBF interpolation
 	case 'r':{
 		std::cout << "Fit RBF\n" << std::flush;
-		ImplicitRBF  implicitRBF_( Points, Normals, epsilon );
+		ImplicitRBF  implicitRBF_( Points, Normals, epsilon, &rbfEvaluator );
 		MeshFromFunction((Implicit*)&implicitRBF_);
 		break;
 			 }
@@ -279,16 +280,32 @@ ReconViewer::keyboard(int key, int x, int y)
 
 	case GLUT_KEY_UP:
 		epsilon+=0.01;
-		std::cout <<"Epsilon ="<<epsilon<<"\n"<<std::flush;
+		std::cout <<"Epsilon = "<<epsilon<<"\n"<<std::flush;
 		break;
 
 	case GLUT_KEY_DOWN:
 		if (epsilon>0.015){
 			epsilon-=0.01;
-			std::cout <<"Epsilon ="<<epsilon<<"\n"<<std::flush;
+			std::cout <<"Epsilon = "<<epsilon<<"\n"<<std::flush;
 		}
 		break;
+	case '[':
+		if (rbfEvaluator.Beta>0.015){
+			rbfEvaluator.Beta-=0.01;
+			std::cout <<"Beta = "<<rbfEvaluator.Beta<<"\n"<<std::flush;
+		}
+		break;
+	case ']':
+		rbfEvaluator.Beta+=0.01;
+		std::cout <<"Beta = "<< rbfEvaluator.Beta <<"\n"<<std::flush;
+		break;
 
+	case 't':
+		{
+			rbfEvaluator.Next();
+			std::cout << "RBF basis functions set to " << rbfEvaluator.ToString() << "\n" << std::flush;
+			break;
+		}
     default:
     {
       GlutExaminer::keyboard(key, x, y);
