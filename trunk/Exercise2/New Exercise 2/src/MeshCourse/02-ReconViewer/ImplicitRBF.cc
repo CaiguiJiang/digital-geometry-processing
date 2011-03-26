@@ -2,7 +2,7 @@
 
 
 #include "ImplicitRBF.hh"
-
+#include "RBFEvaluator.h"
 
 //== IMPLEMENTATION ==========================================================
 
@@ -10,14 +10,10 @@
 ImplicitRBF::
 ImplicitRBF( const std::vector<Vec3f>& _points, 
 			 const std::vector<Vec3f>& _normals,
-             float& epsilon )
+             float& epsilon,
+			 RBFEvaluator* rbfEval)
 {
-//////////////////////////////////////////////////////////////////////
-	// INSERT CODE:
-	// 1) collect constraints (on-surface and off-surface)
-	// 2) setup matrix
-	// 3) solve linear system for weights_
-//////////////////////////////////////////////////////////////////////
+	rbfEvaluator = rbfEval;
 	int n = _points.size();
 	gmmMatrix A(2*n,2*n); // Matrix
 	gmmVector b; // Right-hand-side vector (0,1)
