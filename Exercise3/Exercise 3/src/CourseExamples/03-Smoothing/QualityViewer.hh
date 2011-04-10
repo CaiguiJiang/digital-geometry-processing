@@ -98,7 +98,9 @@ protected:
 
 
   OpenMesh::VPropHandleT<Mesh::Scalar>  vunicurvature_, vcurvature_, vgausscurvature_;
+  OpenMesh::VPropHandleT<Vec3f> vcurvatureWithoutnorm_;
   OpenMesh::EPropHandleT<Mesh::Scalar>  eweight_;
+  OpenMesh::VPropHandleT<Mesh::Scalar>  eweightSum_;
   OpenMesh::FPropHandleT<Mesh::Scalar>  tshape_;
 
   GLuint  textureID_;
