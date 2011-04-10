@@ -21,7 +21,7 @@
 //   
 //   This program is distributed in the hope that it will be useful,
 //   but WITHOUT ANY WARRANTY; without even the implied warranty of
-//   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the0
 //   GNU General Public License for more details.
 //   
 //   You should have received a copy of the GNU General Public License
@@ -145,8 +145,21 @@ smooth(unsigned int _iters)
 	// Use eweight_ properties for the individual edge weights
 	// and their sum for the normalization term.
 	// ------------- IMPLEMENT HERE ---------
-
-
+for (unsigned int i = 0; i < _iters; i++) 
+{
+	for (Mesh::VertexIter vIt = mesh_.vertices_begin();
+		vIt != mesh_.vertices_end(); ++vIt)
+		{
+			Vec3f LBM = mesh_.property(vcurvatureWithoutnorm_,vIt);
+			float sum_weights = mesh_.property(eweightSum_,vIt);
+			
+			Mesh::Point newV = mesh_.point(vIt.handle()) + ((LBM * 0.5) / sum_weights) ;
+			mesh_.set_point(vIt.handle(), newV);
+		}
+	calc_weights();
+	calc_mean_curvature();
+}
+mesh_.update_normals();
 
 }
 
