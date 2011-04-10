@@ -65,7 +65,7 @@ keyboard(int key, int x, int y)
 	switch (toupper(key))
 	{
 
-			case 'O':
+	case 'O':
     {
 		//.pts (point cloud) file opening
 		CFileDialog dlg(TRUE, LPCTSTR("off"), LPCTSTR("*.off"));
@@ -107,6 +107,22 @@ keyboard(int key, int x, int y)
 			break;
 		}
 
+	case 'T':
+		{
+			std::cout << "10 tangential smoothing iterations: " << std::flush;
+			tangential_smooth(10);
+			calc_weights();
+			calc_mean_curvature();
+			calc_uniform_mean_curvature();
+			calc_gauss_curvature();
+			calc_triangle_quality();
+			face_color_coding();
+
+			glutPostRedisplay();
+			std::cout << "done\n";
+			break;
+		}
+
 
 	default:
 		{
@@ -136,6 +152,21 @@ smooth(unsigned int _iters)
 
 //-----------------------------------------------------------------------------
 
+void SmoothingViewer::UniformLaplace(Mesh::VertexHandle vh, Mesh::Point* p)
+{
+	int valence = 0;
+	Mesh::Point Lu_v;
+	Lu_v[0] = Lu_v[1] = Lu_v[2] = 0.0;
+	
+	// Calculate number of neighbors around current vertex, and vector sum of all neighbors
+	for (Mesh::VertexVertexIter vvIt = mesh_.vv_iter(vh);	vvIt; ++vvIt, ++valence) {
+		Lu_v += mesh_.point(vvIt.handle());
+	}
+
+	Lu_v /= valence;
+	Lu_v -= mesh_.point(vh);
+	*p = Lu_v;
+}
 
 void 
 SmoothingViewer::
@@ -145,24 +176,13 @@ uniform_smooth(unsigned int _iters)
 	// TASK 3.1.b Smoothing using the uniform Laplacian approximation
 	// ------------- IMPLEMENT HERE ---------
 
-	
-
 	for (unsigned int i = 0; i < _iters; i++) {
 		std::vector<Mesh::Point> Lu;
 		for (Mesh::VertexIter vIt = mesh_.vertices_begin();
 		vIt != mesh_.vertices_end(); ++vIt)
 		{
-			int valence = 0;
 			Mesh::Point Lu_v;
-			Lu_v[0] = Lu_v[1] = Lu_v[2] = 0.0;
-			
-			// Calculate number of neighbors around current vertex, and vector sum of all neighbors
-			for (Mesh::VertexVertexIter vvIt = mesh_.vv_iter(vIt.handle());	vvIt; ++vvIt, ++valence) {
-				Lu_v += mesh_.point(vvIt.handle());
-			}
-
-			Lu_v /= valence;
-			Lu_v -= mesh_.point(vIt.handle());
+			UniformLaplace(vIt.handle(), &Lu_v);
 			Lu.push_back(Lu_v);
 		}
 		
@@ -176,4 +196,32 @@ uniform_smooth(unsigned int _iters)
 	}
 }
 
+void 
+SmoothingViewer::
+tangential_smooth(unsigned int _iters)
+{
+	for (unsigned int i = 0; i < _iters; i++) {
+		std::vector<Mesh::Point> tLu;
+		for (Mesh::VertexIter vIt = mesh_.vertices_begin();
+		vIt != mesh_.vertices_end(); ++vIt)
+		{
+			Mesh::Point P;
+			UniformLaplace(vIt.handle(), &P);
+			// Projecting the laplacian result back to the plane
+			Mesh::Point O = mesh_.point(vIt.handle());
+
+			P = O + P * 0.5;
+			Mesh::Normal N = mesh_.normal(vIt.handle());
+			Mesh::Point Q = P - N * dot(P-O, N);
+			tLu.push_back(Q);
+		}
+		
+		int i = 0;
+		for (Mesh::VertexIter vIt = mesh_.vertices_begin();
+			 vIt != mesh_.vertices_end(); ++vIt, ++i) {
+				 Mesh::Point newV = tLu[i];
+				 mesh_.set_point(vIt.handle(), newV);
+		}
+	}
+}
 //=============================================================================

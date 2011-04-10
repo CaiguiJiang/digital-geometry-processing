@@ -43,10 +43,7 @@
 
 //== INCLUDES =================================================================
 
-
 #include "QualityViewer.hh"
-
-
 
 //== CLASS DEFINITION =========================================================
 
@@ -64,9 +61,8 @@ public:
 
   void uniform_smooth(unsigned int _iters);
 
-
+  void tangential_smooth(unsigned int _iters);
 private:
-
 
   virtual void keyboard(int key, int x, int y);
 
@@ -75,7 +71,7 @@ private:
   Mesh::Point& new_pos(Mesh::VertexHandle _vh) 
   { return mesh_.property(vpos_, _vh); }
 
-
+  void UniformLaplace(Mesh::VertexHandle vh, Mesh::Point* p);
 
 private:
 
