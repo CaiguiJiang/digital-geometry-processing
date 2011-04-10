@@ -49,6 +49,7 @@ using std::endl;
 
 //== IMPLEMENTATION ========================================================== 
 
+const float PI = 3.14159265;
 
 QualityViewer::
 QualityViewer(const char* _title, int _width, int _height)
@@ -217,6 +218,20 @@ calc_uniform_mean_curvature()
 
 }
 
+float 
+QualityViewer::
+calculateDegree(Mesh::VertexHandle h0, Mesh::VertexHandle h1, Mesh::VertexHandle h2)
+{
+	Mesh::Point o = mesh_.point(h0);
+	Mesh::Point a = mesh_.point(h1);
+	Mesh::Point b = mesh_.point(h2);
+	OpenMesh::Vec3f ao = o-a;
+	OpenMesh::Vec3f bo = o-b;
+	float dotProduct = dot(ao,bo) / (ao.length() * bo.length());
+	float degree = acos(dotProduct);
+	return degree;
+}
+
 void 
 QualityViewer::
 calc_gauss_curvature()
@@ -226,7 +241,30 @@ calc_gauss_curvature()
 	// Hint: When calculating angles out of cross products make sure the value 
 	// you pass to the acos function is between -1.0 and 1.0.
 	// ------------- IMPLEMENT HERE ---------
-
+	for (Mesh::VertexIter vIt = mesh_.vertices_begin();
+		vIt != mesh_.vertices_end(); ++vIt)
+	{
+		bool init = false;
+		float totalDegrees = 0.0;
+		Mesh::VertexHandle center = vIt.handle();
+		Mesh::VertexHandle first;
+		Mesh::VertexHandle previous;
+		for (Mesh::VertexVertexIter vvIt = mesh_.vv_iter(vIt.handle());	vvIt; ++vvIt) {
+			if (!init) {
+				init = true;
+				first = previous = vvIt.handle();
+				continue;
+			}
+			Mesh::VertexHandle current = vvIt.handle(); // current is at least the 2nd neighbor
+			float degree = calculateDegree(center, previous, current);
+			totalDegrees += degree;
+			previous = current;
+		}
+		// Closing the loop with last & first neighbors
+		float degree = calculateDegree(center, previous, first);
+		totalDegrees += degree;
+		mesh_.property(vgausscurvature_, vIt.handle()) = 2*PI - totalDegrees;
+	}
 
 }
 

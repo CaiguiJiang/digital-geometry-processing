@@ -75,6 +75,7 @@ protected:
   virtual void init();
   virtual void draw(const std::string& _draw_mode);
 
+  float calculateDegree(Mesh::VertexHandle h0, Mesh::VertexHandle h1, Mesh::VertexHandle h2);
 
   /// calculate vertex and edge weights
   void calc_weights();
