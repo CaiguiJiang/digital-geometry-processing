@@ -249,7 +249,9 @@ calc_triangle_quality()
 		b = mesh_.point(cfvIt.handle()); ++cfvIt;
 		c = mesh_.point(cfvIt.handle());
 
-		float crossProduct = cross(a,b).length();
+		OpenMesh::Vec3f ab = (b-a);
+		OpenMesh::Vec3f ac = (c-a);
+		float crossProduct = cross(ab,ac).length();
 		if (crossProduct < FLT_MIN) {
 			mesh_.property(tshape_, fIt.handle()) = FLT_MAX;
 			continue;
