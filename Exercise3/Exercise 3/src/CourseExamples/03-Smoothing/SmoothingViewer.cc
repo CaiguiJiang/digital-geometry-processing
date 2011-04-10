@@ -206,12 +206,12 @@ tangential_smooth(unsigned int _iters)
 		vIt != mesh_.vertices_end(); ++vIt)
 		{
 			Mesh::Point P;
-			UniformLaplace(vIt.handle(), &P);
-			// Projecting the laplacian result back to the plane
+			UniformLaplace(vIt.handle(), &P);			
 			Mesh::Point O = mesh_.point(vIt.handle());
-
+			// This should be the new position of the point
 			P = O + P * 0.5;
 			Mesh::Normal N = mesh_.normal(vIt.handle());
+			// Projecting the laplacian result back to the plane
 			Mesh::Point Q = P - N * dot(P-O, N);
 			tLu.push_back(Q);
 		}
