@@ -242,7 +242,33 @@ calc_triangle_quality()
 	// For numerical stability you might want to set the property value to
 	// a predifined large value (e.g. FLT_MAX) if the denominator is smaller than FLT_MIN
 	// ------------- IMPLEMENT HERE ---------
+	for (Mesh::ConstFaceIter fIt = mesh_.faces_begin(); fIt != mesh_.faces_end(); ++fIt) {
+		OpenMesh::Vec3f a,b,c;
+		Mesh::ConstFaceVertexIter cfvIt = mesh_.cfv_iter(fIt.handle());
+		a = mesh_.point(cfvIt.handle()); ++cfvIt;
+		b = mesh_.point(cfvIt.handle()); ++cfvIt;
+		c = mesh_.point(cfvIt.handle());
 
+		float crossProduct = cross(a,b).length();
+		if (crossProduct < FLT_MIN) {
+			mesh_.property(tshape_, fIt.handle()) = FLT_MAX;
+			continue;
+		}
+		else
+		{
+			// a,b,c
+			float ab_len = (b-a).length();
+			float bc_len = (c-b).length();
+			float ac_len = (c-a).length();
+			float min_len = (ab_len < bc_len) ?
+				((ab_len < ac_len) ? ab_len : ac_len) :
+				((bc_len < ac_len) ? bc_len : ac_len);
+			float mult_abc = ab_len * bc_len * ac_len;
+			float r = mult_abc / (crossProduct * 2);
+			float ratio = (r / min_len);
+			mesh_.property(tshape_, fIt.handle()) = ratio;
+		}
+	}
 }
 
 //-----------------------------------------------------------------------------
