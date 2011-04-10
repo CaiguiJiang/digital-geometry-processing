@@ -63,6 +63,8 @@ QualityViewer(const char* _title, int _width, int _height)
 	mesh_.add_property(eweight_);
 	mesh_.add_property(tshape_);
 	mesh_.add_property(vgausscurvature_);
+	mesh_.add_property(vcurvatureWithoutnorm_);
+	mesh_.add_property(eweightSum_);
 	
 
 
@@ -161,6 +163,7 @@ open_mesh(const char* _filename)
 
 
 
+
 void
 QualityViewer::
 calc_weights()
@@ -169,11 +172,40 @@ calc_weights()
 	// TASK 3.3.a Compute cotangent weights for laplacian, and produce them in the mesh edge property eweight_
 	// Use the weights from calc_weights(): eweight_
 	// ------------- IMPLEMENT HERE ---------
+	for (Mesh::VertexIter vIt = mesh_.vertices_begin();
+		vIt != mesh_.vertices_end(); ++vIt)
+	{
+		OpenMesh::HalfedgeHandle start_edge, cur_edge;
+		cur_edge = mesh_.halfedge_handle(vIt);
+		start_edge = cur_edge;
+		do {
+			Vec3f v = mesh_.point(vIt);
+			Vec3f vi = mesh_.point(mesh_.to_vertex_handle(cur_edge));
+			Vec3f va = mesh_.point(mesh_.to_vertex_handle(mesh_.next_halfedge_handle(cur_edge)));
+			Vec3f vb = mesh_.point(mesh_.to_vertex_handle(mesh_.next_halfedge_handle(mesh_.opposite_halfedge_handle(cur_edge))));
+
+			Vec3f v_alpha1 = v - va;
+			Vec3f v_alpha2 = vi - va;
+			Vec3f v_beta1 = v - vb;
+			Vec3f v_beta2 = vi - vb;
+
+			float cosAlpha = dot (v_alpha1,v_alpha2) / (v_alpha1.length() * v_alpha2.length());
+			float cosBeta = dot (v_beta1,v_beta2) / (v_beta1.length() * v_beta2.length());
+
+			float sinAlpha = sqrt (1-cosAlpha*cosAlpha);
+			float sinBeta = sqrt (1-cosBeta*cosBeta);
+
+			float cotAlpha = cosAlpha / sinAlpha;
+			float cotBeta = cosBeta / sinBeta;
+
+			OpenMesh::EdgeHandle edge = mesh_.edge_handle(cur_edge);
+			mesh_.property(eweight_,edge) = cotAlpha + cotBeta;
+
+			OpenMesh::HalfedgeHandle oppositeHeh = mesh_.opposite_halfedge_handle(cur_edge);
+			cur_edge = mesh_.next_halfedge_handle(oppositeHeh);
+		} while (cur_edge != start_edge);
+	}
 }
-
-
-//-----------------------------------------------------------------------------
-
 
 void 
 QualityViewer::
@@ -184,8 +216,35 @@ calc_mean_curvature()
 	// Save your approximation in vcurvature_ vertex property of the mesh.
 	// Use the weights from calc_weights(): eweight_
 	// ------------- IMPLEMENT HERE ---------
+for (Mesh::VertexIter vIt = mesh_.vertices_begin();
+		vIt != mesh_.vertices_end(); ++vIt)
+	{
+		Vec3f LBM(0,0,0);
+		float sum = 0.0;
+		
+		OpenMesh::HalfedgeHandle start_edge, cur_edge;
+		cur_edge = mesh_.halfedge_handle(vIt);
+		start_edge = cur_edge;
+		Vec3f v = mesh_.point(vIt);
 
+		do {
+			Vec3f vi = mesh_.point(mesh_.to_vertex_handle(cur_edge));
+			OpenMesh::EdgeHandle edge = mesh_.edge_handle (cur_edge);
+			float w = mesh_.property(eweight_,edge);
+			sum = sum + w;
+			Vec3f u = vi - v;
+			LBM = LBM + (w * u);
+
+			OpenMesh::HalfedgeHandle oppositeHeh = mesh_.opposite_halfedge_handle(cur_edge);
+			cur_edge = mesh_.next_halfedge_handle(oppositeHeh);
+		} while (cur_edge != start_edge);
+
+		mesh_.property(vcurvature_,vIt) = LBM.norm();
+		mesh_.property(vcurvatureWithoutnorm_,vIt) = LBM;
+		mesh_.property(eweightSum_,vIt) = sum;
 }
+}
+
 
 void 
 QualityViewer::
