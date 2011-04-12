@@ -189,15 +189,27 @@ calc_weights()
 			Vec3f v_beta1 = v - vb;
 			Vec3f v_beta2 = vi - vb;
 
-			float cosAlpha = dot (v_alpha1,v_alpha2) / (v_alpha1.length() * v_alpha2.length());
-			float cosBeta = dot (v_beta1,v_beta2) / (v_beta1.length() * v_beta2.length());
+			/*
+			float cosa = dot(v_alpha1, v_alpha2) / (v_alpha1.length() * v_alpha2.length());
+			float cosb = dot(v_beta1, v_beta2) / (v_beta1.length() * v_beta2.length());
+			float sina = cross(v_alpha1, v_alpha2).length() / (v_alpha1.length() * v_alpha2.length());
+			float sinb = cross(v_beta1, v_beta2).length() / (v_beta1.length() * v_beta2.length());
+			
+			if (cosa < -0.99) cosa = -0.99;
+			if (cosa > 0.99) cosa = 0.99;
+			if (cosb < -0.99) cosb = -0.99;
+			if (cosb > 0.99) cosb = 0.99;
 
-			float sinAlpha = sqrt (1-cosAlpha*cosAlpha);
-			float sinBeta = sqrt (1-cosBeta*cosBeta);
+			float cotAlpha = cosa / sina;
+			float cotBeta =  cosb / sinb;
+			*/
 
-			float cotAlpha = cosAlpha / sinAlpha;
-			float cotBeta = cosBeta / sinBeta;
-
+			float cotAlpha = fabs(dot(v_alpha1, v_alpha2) / cross(v_alpha1, v_alpha2).length());
+			float cotBeta =  fabs(dot(v_beta1, v_beta2) / cross(v_beta1, v_beta2).length());
+			
+			float weight = cotAlpha + cotBeta;
+			// Clamping back to zero if negative
+			if (weight < 0) weight = 0;
 			OpenMesh::EdgeHandle edge = mesh_.edge_handle(cur_edge);
 			mesh_.property(eweight_,edge) = cotAlpha + cotBeta;
 
@@ -233,13 +245,16 @@ for (Mesh::VertexIter vIt = mesh_.vertices_begin();
 			float w = mesh_.property(eweight_,edge);
 			sum = sum + w;
 			Vec3f u = vi - v;
-			LBM = LBM + (w * u);
+			LBM = LBM + (u * w);
 
 			OpenMesh::HalfedgeHandle oppositeHeh = mesh_.opposite_halfedge_handle(cur_edge);
 			cur_edge = mesh_.next_halfedge_handle(oppositeHeh);
 		} while (cur_edge != start_edge);
 
-		mesh_.property(vcurvature_,vIt) = LBM.norm();
+		mesh_.property(vcurvature_,vIt) = 			
+			(mesh_.is_boundary(vIt)) ? 
+			0.0 : 
+			LBM.norm() * 0.5;
 		mesh_.property(vcurvatureWithoutnorm_,vIt) = LBM;
 		mesh_.property(eweightSum_,vIt) = sum;
 }
@@ -271,7 +286,7 @@ calc_uniform_mean_curvature()
 		
 		mesh_.property(vunicurvature_, vIt.handle()) = 
 			(mesh_.is_boundary(vIt)) ? 
-			0.0 : // TODO: What should be the curviture of the boundary vertices?
+			0.0 : 
 			Lu_v.length() / 2;
 	}
 
@@ -322,7 +337,10 @@ calc_gauss_curvature()
 		// Closing the loop with last & first neighbors
 		float degree = calculateDegree(center, previous, first);
 		totalDegrees += degree;
-		mesh_.property(vgausscurvature_, vIt.handle()) = 2*PI - totalDegrees;
+		mesh_.property(vgausscurvature_, vIt.handle()) = 			
+			(mesh_.is_boundary(vIt)) ? 
+			0.0 :
+			2*PI - totalDegrees;
 	}
 
 }
