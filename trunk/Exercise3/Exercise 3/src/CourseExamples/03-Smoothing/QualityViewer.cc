@@ -46,6 +46,10 @@
 using std::cout;
 using std::endl;
 
+#define Min(x, y) (((x) < (y)) ? (x) : (y))
+#define Max(x, y) (((x) > (y)) ? (x) : (y))
+
+
 
 //== IMPLEMENTATION ========================================================== 
 
@@ -168,6 +172,7 @@ void
 QualityViewer::
 calc_weights()
 {
+
 		// ------------- IMPLEMENT HERE ---------
 	// TASK 3.3.a Compute cotangent weights for laplacian, and produce them in the mesh edge property eweight_
 	// Use the weights from calc_weights(): eweight_
@@ -189,29 +194,24 @@ calc_weights()
 			Vec3f v_beta1 = v - vb;
 			Vec3f v_beta2 = vi - vb;
 
-			/*
-			float cosa = dot(v_alpha1, v_alpha2) / (v_alpha1.length() * v_alpha2.length());
-			float cosb = dot(v_beta1, v_beta2) / (v_beta1.length() * v_beta2.length());
-			float sina = cross(v_alpha1, v_alpha2).length() / (v_alpha1.length() * v_alpha2.length());
-			float sinb = cross(v_beta1, v_beta2).length() / (v_beta1.length() * v_beta2.length());
-			
-			if (cosa < -0.99) cosa = -0.99;
-			if (cosa > 0.99) cosa = 0.99;
-			if (cosb < -0.99) cosb = -0.99;
-			if (cosb > 0.99) cosb = 0.99;
-
+			float calca = dot(v_alpha1, v_alpha2) / (v_alpha1.length() * v_alpha2.length());
+			float calcb = dot(v_beta1, v_beta2) / (v_beta1.length() * v_beta2.length());
+			float cosa = Max (-0.99, Min (calca,0.99));
+			float cosb = Max (-0.99, Min (calcb,0.99));
+			float sina = sqrt (1-cosa*cosa);
+			float sinb = sqrt (1-cosb*cosb); 
+		
 			float cotAlpha = cosa / sina;
 			float cotBeta =  cosb / sinb;
-			*/
-
-			float cotAlpha = fabs(dot(v_alpha1, v_alpha2) / cross(v_alpha1, v_alpha2).length());
-			float cotBeta =  fabs(dot(v_beta1, v_beta2) / cross(v_beta1, v_beta2).length());
+			
+			//float cotAlpha = fabs(dot(v_alpha1, v_alpha2) / cross(v_alpha1, v_alpha2).length());
+			//float cotBeta =  fabs(dot(v_beta1, v_beta2) / cross(v_beta1, v_beta2).length());
 			
 			float weight = cotAlpha + cotBeta;
 			// Clamping back to zero if negative
 			if (weight < 0) weight = 0;
 			OpenMesh::EdgeHandle edge = mesh_.edge_handle(cur_edge);
-			mesh_.property(eweight_,edge) = cotAlpha + cotBeta;
+			mesh_.property(eweight_,edge) = weight;
 
 			OpenMesh::HalfedgeHandle oppositeHeh = mesh_.opposite_halfedge_handle(cur_edge);
 			cur_edge = mesh_.next_halfedge_handle(oppositeHeh);
@@ -228,6 +228,17 @@ calc_mean_curvature()
 	// Save your approximation in vcurvature_ vertex property of the mesh.
 	// Use the weights from calc_weights(): eweight_
 	// ------------- IMPLEMENT HERE ---------
+
+calc_weights();
+
+for (Mesh::VertexIter vIt = mesh_.vertices_begin();
+		vIt != mesh_.vertices_end(); ++vIt)
+{
+		mesh_.property(vcurvatureWithoutnorm_,vIt) = Vec3f(0,0,0);
+		mesh_.property(eweightSum_,vIt) = 0;
+		mesh_.property(vcurvature_,vIt) = 0;	
+}
+	
 for (Mesh::VertexIter vIt = mesh_.vertices_begin();
 		vIt != mesh_.vertices_end(); ++vIt)
 	{
