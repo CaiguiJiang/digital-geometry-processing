@@ -150,6 +150,7 @@ for (unsigned int i = 0; i < _iters; i++)
 	for (Mesh::VertexIter vIt = mesh_.vertices_begin();
 		vIt != mesh_.vertices_end(); ++vIt)
 		{
+			if (mesh_.is_boundary(vIt.handle())) continue;
 			Vec3f LBM = mesh_.property(vcurvatureWithoutnorm_,vIt);
 			float sum_weights = mesh_.property(eweightSum_,vIt);
 			
@@ -202,6 +203,7 @@ uniform_smooth(unsigned int _iters)
 		int i = 0;
 		for (Mesh::VertexIter vIt = mesh_.vertices_begin();
 			 vIt != mesh_.vertices_end(); ++vIt, ++i) {
+				 if (mesh_.is_boundary(vIt.handle())) continue;
 				 Mesh::Point newV = mesh_.point(vIt.handle()) + Lu[i] * 0.5;
 				 mesh_.set_point(vIt.handle(), newV);
 		}
@@ -232,6 +234,7 @@ tangential_smooth(unsigned int _iters)
 		int i = 0;
 		for (Mesh::VertexIter vIt = mesh_.vertices_begin();
 			 vIt != mesh_.vertices_end(); ++vIt, ++i) {
+				 if (mesh_.is_boundary(vIt.handle())) continue;
 				 Mesh::Point newV = tLu[i];
 				 mesh_.set_point(vIt.handle(), newV);
 		}
