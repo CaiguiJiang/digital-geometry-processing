@@ -98,8 +98,6 @@ public:
 	Mesh::HalfedgeHandle& target(Mesh::VertexHandle _vh)
 	{ return mesh_.property(vtarget, _vh); }
 
-	  
-
 protected:
 
 	  Mesh                       mesh_;
@@ -129,6 +127,35 @@ protected:
 
 
 	std::set<QueueVertex, VertexCmp>  queue;
+
+	Mesh::Normal CalculateNormal( VertexHandle a, VertexHandle b, VertexHandle c, Mesh::VertexHandle v0 )
+	{	
+		Mesh::Point pa, pb, pc;
+		pa = mesh_.point(a);
+		pb = mesh_.point(b);
+		pc = mesh_.point(c);
+		if (a == v0) return CalculateNormal(pa,pb,pc);
+		else if(b == v0) return CalculateNormal(pb,pa,pc);
+		else return CalculateNormal(pc,pa,pb);	
+	}
+
+	Mesh::Normal CalculateNormal( VertexHandle a, VertexHandle b, VertexHandle c, Mesh::VertexHandle v0, Mesh::Point p1 )
+	{
+		Mesh::Point pa, pb, pc;
+		pa = mesh_.point(a);
+		pb = mesh_.point(b);
+		pc = mesh_.point(c);
+		if (a == v0) return CalculateNormal(p1,pb,pc);
+		else if (b == v0) return CalculateNormal(p1,pa,pc);
+		else return CalculateNormal(p1,pa,pb);	
+	}
+
+	Mesh::Normal CalculateNormal( Mesh::Point a, Mesh::Point b, Mesh::Point c)
+	{
+		OpenMesh::Vec3f v1 = a - b;
+		OpenMesh::Vec3f v2 = a - c;
+		return cross(v1,v2).normalize();
+	}
 
   
 };
