@@ -291,6 +291,15 @@ keyboard(int key, int x, int y)
 				decimate(percentage_ * mesh_.n_vertices() / 100);
 				std::cout << "#vertices: " << mesh_.n_vertices() << std::endl;
 			}
+		case 'M':
+			{
+				// compute normals & quadrics
+				init();
+
+				// decimate
+				decimate(mesh_.n_vertices() - 1);
+				std::cout << "#vertices: " << mesh_.n_vertices() << std::endl;
+			}
 
 		default:
 			{
@@ -313,7 +322,6 @@ void MeshViewer::init()
 	// compute face normals
 	mesh_.update_face_normals();
 
-
 	Mesh::VertexIter  v_it, v_end = mesh_.vertices_end();	
 
 	for (v_it=mesh_.vertices_begin(); v_it != v_end; ++v_it)
@@ -331,14 +339,11 @@ void MeshViewer::init()
 			double a = n[0];
 			double b = n[1];
 			double c = n[2];
-			double d = -n[0]*v[0]-n[1]*v[1]-n[2]*v[2];			
-
+			double d = -n[0]*v[0]-n[1]*v[1]-n[2]*v[2];						
 			Quadricd q(a,b,c,d);
 			
 			quadric(v_it) += q;			
 		}
-
-
 	}
 }
 
@@ -353,26 +358,21 @@ bool MeshViewer::is_collapse_legal(Mesh::HalfedgeHandle _hh)
 	v0 = mesh_.from_vertex_handle(_hh);
 	v1 = mesh_.to_vertex_handle(_hh);
 
-
 	// collect faces
 	Mesh::FaceHandle fl = mesh_.face_handle(_hh);
 	Mesh::FaceHandle fr = mesh_.face_handle(mesh_.opposite_halfedge_handle(_hh));
-
 
 	// backup point positions
 	Mesh::Point p0 = mesh_.point(v0);
 	Mesh::Point p1 = mesh_.point(v1);
 
-
 	// topological test
 	if (!mesh_.is_collapse_ok(_hh))
 		return false;
 
-
 	// test boundary stuff
 	if (mesh_.is_boundary(v0) && !mesh_.is_boundary(v1))
 		return false;
-
 
 	// Exercise 4.2 -----------------------------------------------
 	// INSERT CODE:
@@ -381,36 +381,30 @@ bool MeshViewer::is_collapse_legal(Mesh::HalfedgeHandle _hh)
 	//   more than pi/4 degrees, return false.
 	// ------------------------------------------------------------
 
-	std::vector<Mesh::Normal> normals;
+	// Iterate through all faces adjacent to source vertex
+	bool legal;
 	for (Mesh::VertexFaceIter vf_it = mesh_.vf_iter(v0); vf_it; ++vf_it)
-	{
+	{		
 		Mesh::FaceHandle fh = vf_it.handle();
+		// Skip soon-to-be degenerate triangles
 		if (fh == fl || fh == fr) continue;
-		normals.push_back(mesh_.normal(fh));
-	}
+		
+		// Iterate through		
+		Mesh::ConstFaceVertexIter cfv_it = mesh_.cfv_iter(fh);
+		VertexHandle a = cfv_it.handle(); ++cfv_it;
+		VertexHandle b = cfv_it.handle(); ++cfv_it;
+		VertexHandle c = cfv_it.handle();
+		
+		Mesh::Normal n_old = CalculateNormal(a,b,c,v0);
+		Mesh::Normal n_new = CalculateNormal(a,b,c,v0,p1);
 
-	// Move 'from' point to 'to' point position
-	mesh_.set_point(v0, p1);
-	int i = 0;
-	bool legal = true;
-	for (Mesh::VertexFaceIter vf_it = mesh_.vf_iter(v0); vf_it; ++vf_it)
-	{
-		Mesh::FaceHandle fh = vf_it.handle();
-		if (fh == fl || fh == fr) continue;
-		Mesh::Normal before = normals[i];
-		Mesh::Normal after = mesh_.normal(fh);
-		// PI / 4 = 0.78539816339744830961566084581988
-		double dot_product = dot(before, after);
+		double dot_product = dot(n_old, n_new);
 		if (acos(dot_product) > 0.78539816339744830961566084581988) 
 		{
 			legal = false;
 			break;
 		}
-		i++;
 	}
-
-	// Move the point back to its original location
-	mesh_.set_point(v0, p0);
 
 	// collapse passed all tests -> ok
 	return legal;
@@ -506,7 +500,7 @@ void MeshViewer::decimate(unsigned int _n_vertices)
 
 	while (nv > _n_vertices && !queue.empty())
 	{
-		std::cout << "# Vertices reduced to " << nv << ". " << queue.size() << " vertices remain in queue." << std::endl;
+		//std::cout << "# Vertices reduced to " << nv << ". " << queue.size() << " vertices remain in queue." << std::endl;
 		// Exercise 4.3 ----------------------------------------------
 		// INSERT CODE:
 		// Decimate using priority queue:
@@ -553,4 +547,3 @@ void MeshViewer::decimate(unsigned int _n_vertices)
 	// re-update face indices for faster rendering
 	update_face_indices();
 }
-
