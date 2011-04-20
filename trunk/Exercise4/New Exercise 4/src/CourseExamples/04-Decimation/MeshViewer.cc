@@ -48,6 +48,7 @@
 #include <set>
 //#include <unistd.h> //in linux version this header file was included. Removed for MSVC version
 #include <float.h>
+#include "OpenMesh/Tools/Geometry/QuadricT.hh"
 
 
 //== IMPLEMENTATION ========================================================== 
@@ -287,7 +288,7 @@ keyboard(int key, int x, int y)
 				init();
 
 				// decimate
-				decimate(percentage_*mesh_.n_vertices());
+				decimate(percentage_ * mesh_.n_vertices() / 100);
 				std::cout << "#vertices: " << mesh_.n_vertices() << std::endl;
 			}
 
@@ -313,20 +314,30 @@ void MeshViewer::init()
 	mesh_.update_face_normals();
 
 
-	Mesh::VertexIter  v_it, v_end = mesh_.vertices_end();
-	Mesh::Point       n;
-	double              a, b, c, d;
+	Mesh::VertexIter  v_it, v_end = mesh_.vertices_end();	
 
 	for (v_it=mesh_.vertices_begin(); v_it != v_end; ++v_it)
 	{
 		priority(v_it) = -1.0;
 		quadric(v_it).clear();
+		
+		Mesh::Point v = mesh_.point(v_it.handle());
 
+		// iterate through all adjacent faces to current vertex
+		for (Mesh::VertexFaceIter vf_it = mesh_.vf_iter(v_it.handle()); vf_it; ++vf_it)
+		{	
+			Mesh::Normal n = mesh_.normal(vf_it.handle());
 
-		// Exercise 4.1 --------------------------------------
-		// INSERT CODE:
-		// calc vertex quadrics from incident triangles
-		// ---------------------------------------------------
+			double a = n[0];
+			double b = n[1];
+			double c = n[2];
+			double d = -n[0]*v[0]-n[1]*v[1]-n[2]*v[2];			
+
+			Quadricd q(a,b,c,d);
+			
+			quadric(v_it) += q;			
+		}
+
 
 	}
 }
@@ -370,9 +381,39 @@ bool MeshViewer::is_collapse_legal(Mesh::HalfedgeHandle _hh)
 	//   more than pi/4 degrees, return false.
 	// ------------------------------------------------------------
 
+	std::vector<Mesh::Normal> normals;
+	for (Mesh::VertexFaceIter vf_it = mesh_.vf_iter(v0); vf_it; ++vf_it)
+	{
+		Mesh::FaceHandle fh = vf_it.handle();
+		if (fh == fl || fh == fr) continue;
+		normals.push_back(mesh_.normal(fh));
+	}
+
+	// Move 'from' point to 'to' point position
+	mesh_.set_point(v0, p1);
+	int i = 0;
+	bool legal = true;
+	for (Mesh::VertexFaceIter vf_it = mesh_.vf_iter(v0); vf_it; ++vf_it)
+	{
+		Mesh::FaceHandle fh = vf_it.handle();
+		if (fh == fl || fh == fr) continue;
+		Mesh::Normal before = normals[i];
+		Mesh::Normal after = mesh_.normal(fh);
+		// PI / 4 = 0.78539816339744830961566084581988
+		double dot_product = dot(before, after);
+		if (acos(dot_product) > 0.78539816339744830961566084581988) 
+		{
+			legal = false;
+			break;
+		}
+		i++;
+	}
+
+	// Move the point back to its original location
+	mesh_.set_point(v0, p0);
 
 	// collapse passed all tests -> ok
-	return true;
+	return legal;
 }
 
 
@@ -381,12 +422,18 @@ bool MeshViewer::is_collapse_legal(Mesh::HalfedgeHandle _hh)
 
 float MeshViewer::priority(Mesh::HalfedgeHandle _heh)
 {
-	// Exercise 4.3 ----------------------------------------------
-	// INSERT CODE:
-	// return priority: the smaller the better
-	// use quadrics to estimate approximation error
-	// -----------------------------------------------------------
-	return 0; //this is here just to make sure it compiles until function is implemented
+	Mesh::VertexHandle vh0, vh1;
+	vh0 = mesh_.from_vertex_handle(_heh);
+	vh1 = mesh_.to_vertex_handle(_heh);
+		
+	Quadricd& d0 = quadric(vh0);
+	Quadricd& d1 = quadric(vh1);
+	
+	OpenMesh::Vec3d v0,v1;
+	v0 = mesh_.point(vh0);
+	v1 = mesh_.point(vh1);
+
+	return d0(v0) + d1(v1);
 }
 
 
@@ -457,11 +504,9 @@ void MeshViewer::decimate(unsigned int _n_vertices)
 	for (; v_it!=v_end; ++v_it)
 		enqueue_vertex(v_it.handle());
 
-
-
 	while (nv > _n_vertices && !queue.empty())
 	{
-
+		std::cout << "# Vertices reduced to " << nv << ". " << queue.size() << " vertices remain in queue." << std::endl;
 		// Exercise 4.3 ----------------------------------------------
 		// INSERT CODE:
 		// Decimate using priority queue:
@@ -469,7 +514,28 @@ void MeshViewer::decimate(unsigned int _n_vertices)
 		//   2) collapse this halfedge
 		//   3) update queue
 		// -----------------------------------------------------------
+		std::set<QueueVertex, VertexCmp>::iterator it = queue.begin();
+		from = it->v;
+		queue.erase(it);
+		
+		hh = target(from);
+		//if (is_collapse_legal(hh))
+		//{
+			for (vv_it = mesh_.vv_iter(from); vv_it; ++vv_it)
+			{
+				one_ring.push_back(vv_it.handle());
+			}
 
+
+			mesh_.collapse(hh);
+			
+			for (or_it = one_ring.begin(); or_it != one_ring.end(); ++or_it)
+			{
+				enqueue_vertex(*or_it);
+			}
+		//}
+
+		nv--;
 	}
 
 
