@@ -290,6 +290,7 @@ keyboard(int key, int x, int y)
 				// decimate
 				decimate(percentage_ * mesh_.n_vertices() / 100);
 				std::cout << "#vertices: " << mesh_.n_vertices() << std::endl;
+				break;
 			}
 		case 'M':
 			{
@@ -299,6 +300,7 @@ keyboard(int key, int x, int y)
 				// decimate
 				decimate(mesh_.n_vertices() - 1);
 				std::cout << "#vertices: " << mesh_.n_vertices() << std::endl;
+				break;
 			}
 
 		default:
