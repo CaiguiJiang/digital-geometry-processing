@@ -81,6 +81,9 @@ public:
 
   //mesh decimation actions
   void  init();
+
+  void CalculateVertexQuadric( Mesh::VertexHandle vh );
+
   bool  is_collapse_legal(Mesh::HalfedgeHandle _hh);
   float priority(Mesh::HalfedgeHandle _heh);
   void  decimate(unsigned int _n_vertices);

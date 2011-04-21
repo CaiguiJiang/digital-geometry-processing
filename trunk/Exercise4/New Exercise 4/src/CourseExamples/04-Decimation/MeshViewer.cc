@@ -328,29 +328,34 @@ void MeshViewer::init()
 
 	for (v_it=mesh_.vertices_begin(); v_it != v_end; ++v_it)
 	{
-		priority(v_it) = -1.0;
-		quadric(v_it).clear();
-		
-		Mesh::Point v = mesh_.point(v_it.handle());
-
-		// iterate through all adjacent faces to current vertex
-		for (Mesh::VertexFaceIter vf_it = mesh_.vf_iter(v_it.handle()); vf_it; ++vf_it)
-		{	
-			Mesh::Normal n = mesh_.normal(vf_it.handle());
-
-			double a = n[0];
-			double b = n[1];
-			double c = n[2];
-			double d = -n[0]*v[0]-n[1]*v[1]-n[2]*v[2];						
-			Quadricd q(a,b,c,d);
-			
-			quadric(v_it) += q;			
-		}
+		Mesh::VertexHandle vh = v_it.handle();
+		CalculateVertexQuadric(vh);
 	}
 }
 
 
 //-----------------------------------------------------------------------------
+void MeshViewer::CalculateVertexQuadric( Mesh::VertexHandle vh )
+{
+	priority(vh) = -1.0;		
+	quadric(vh).clear();
+
+	Mesh::Point v = mesh_.point(vh);
+
+	// iterate through all adjacent faces to current vertex
+	for (Mesh::VertexFaceIter vf_it = mesh_.vf_iter(vh); vf_it; ++vf_it)
+	{	
+		Mesh::Normal n = mesh_.normal(vf_it.handle());
+
+		double a = n[0];
+		double b = n[1];
+		double c = n[2];
+		double d = -n[0]*v[0]-n[1]*v[1]-n[2]*v[2];						
+		Quadricd q(a,b,c,d);
+
+		quadric(vh) += q;			
+	}		
+}
 
 
 bool MeshViewer::is_collapse_legal(Mesh::HalfedgeHandle _hh)
@@ -383,8 +388,7 @@ bool MeshViewer::is_collapse_legal(Mesh::HalfedgeHandle _hh)
 	//   more than pi/4 degrees, return false.
 	// ------------------------------------------------------------
 
-	// Iterate through all faces adjacent to source vertex
-	bool legal;
+	// Iterate through all faces adjacent to source vertex	
 	for (Mesh::VertexFaceIter vf_it = mesh_.vf_iter(v0); vf_it; ++vf_it)
 	{		
 		Mesh::FaceHandle fh = vf_it.handle();
@@ -403,13 +407,12 @@ bool MeshViewer::is_collapse_legal(Mesh::HalfedgeHandle _hh)
 		double dot_product = dot(n_old, n_new);
 		if (acos(dot_product) > 0.78539816339744830961566084581988) 
 		{
-			legal = false;
-			break;
+			return false;
 		}
 	}
 
 	// collapse passed all tests -> ok
-	return legal;
+	return true;
 }
 
 
@@ -428,8 +431,11 @@ float MeshViewer::priority(Mesh::HalfedgeHandle _heh)
 	OpenMesh::Vec3d v0,v1;
 	v0 = mesh_.point(vh0);
 	v1 = mesh_.point(vh1);
+	
+	double dist0 = d0(v0);
+	double dist1 = d1(v1);
 
-	return d0(v0) + d1(v1);
+	return dist0+dist1;
 }
 
 
@@ -490,8 +496,6 @@ void MeshViewer::decimate(unsigned int _n_vertices)
 	std::vector<Mesh::VertexHandle>            one_ring;
 	std::vector<Mesh::VertexHandle>::iterator  or_it, or_end;
 
-
-
 	// build priority queue
 	Mesh::VertexIter  v_it  = mesh_.vertices_begin(), 
 		v_end = mesh_.vertices_end();
@@ -502,40 +506,32 @@ void MeshViewer::decimate(unsigned int _n_vertices)
 
 	while (nv > _n_vertices && !queue.empty())
 	{
-		//std::cout << "# Vertices reduced to " << nv << ". " << queue.size() << " vertices remain in queue." << std::endl;
-		// Exercise 4.3 ----------------------------------------------
-		// INSERT CODE:
-		// Decimate using priority queue:
-		//   1) take 1st element of queue
-		//   2) collapse this halfedge
-		//   3) update queue
-		// -----------------------------------------------------------
-		std::set<QueueVertex, VertexCmp>::iterator it = queue.begin();
-		from = it->v;
-		queue.erase(it);
-		
+		std::cout << "# Vertices reduced to " << nv << ". " << queue.size() << " vertices remain in queue." << std::endl;
+		std::set<QueueVertex, VertexCmp>::iterator it = queue.begin();		
+		from = it->v;				
 		hh = target(from);
-		//if (is_collapse_legal(hh))
-		//{
+		if (is_collapse_legal(hh))
+		{
+			queue.erase(it);
 			for (vv_it = mesh_.vv_iter(from); vv_it; ++vv_it)
 			{
 				one_ring.push_back(vv_it.handle());
 			}
 
-
 			mesh_.collapse(hh);
 			
 			for (or_it = one_ring.begin(); or_it != one_ring.end(); ++or_it)
 			{
+				CalculateVertexQuadric(*or_it);
 				enqueue_vertex(*or_it);
 			}
-		//}
-
-		nv--;
+			nv--;
+		}
+		else 
+		{
+			std::cout << "Illegal collapse!" << std::endl;
+		}
 	}
-
-
-
 	// clean up
 	queue.clear();
 
