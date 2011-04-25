@@ -345,6 +345,17 @@ void MeshViewer::CalculateVertexQuadric( Mesh::VertexHandle vh )
 	// iterate through all adjacent faces to current vertex
 	for (Mesh::VertexFaceIter vf_it = mesh_.vf_iter(vh); vf_it; ++vf_it)
 	{	
+		Mesh::ConstFaceVertexIter cfv_it = mesh_.cfv_iter(vf_it.handle());
+		VertexHandle a_ = cfv_it.handle(); ++cfv_it;
+		VertexHandle b_ = cfv_it.handle(); ++cfv_it;
+		VertexHandle c_ = cfv_it.handle();
+
+		if (mesh_.status(a_).deleted() ||
+			mesh_.status(b_).deleted() ||
+			mesh_.status(c_).deleted())
+		{
+			std::cout << "Calculating Quadric of a vertex using a degenerate vertex!" << std::endl;
+		}
 		Mesh::Normal n = mesh_.normal(vf_it.handle());
 
 		double a = n[0];
@@ -504,15 +515,18 @@ void MeshViewer::decimate(unsigned int _n_vertices)
 	for (; v_it!=v_end; ++v_it)
 		enqueue_vertex(v_it.handle());
 
+	std::set<QueueVertex, VertexCmp>::iterator it = queue.begin();		
+	
 	while (nv > _n_vertices && !queue.empty())
 	{
-		std::cout << "# Vertices reduced to " << nv << ". " << queue.size() << " vertices remain in queue." << std::endl;
-		std::set<QueueVertex, VertexCmp>::iterator it = queue.begin();		
+		std::cout << "# Vertices reduced to " << nv << ". " << queue.size() << " vertices remain in queue." << std::endl;		
 		from = it->v;				
 		hh = target(from);
 		if (is_collapse_legal(hh))
 		{
 			queue.erase(it);
+			it = queue.begin();
+
 			for (vv_it = mesh_.vv_iter(from); vv_it; ++vv_it)
 			{
 				one_ring.push_back(vv_it.handle());
@@ -522,6 +536,7 @@ void MeshViewer::decimate(unsigned int _n_vertices)
 			
 			for (or_it = one_ring.begin(); or_it != one_ring.end(); ++or_it)
 			{
+				if (mesh_.status(*or_it).deleted()) continue;				
 				CalculateVertexQuadric(*or_it);
 				enqueue_vertex(*or_it);
 			}
@@ -529,7 +544,8 @@ void MeshViewer::decimate(unsigned int _n_vertices)
 		}
 		else 
 		{
-			std::cout << "Illegal collapse!" << std::endl;
+			//std::cout << "Illegal collapse!" << std::endl;
+			it++;
 		}
 	}
 	// clean up
