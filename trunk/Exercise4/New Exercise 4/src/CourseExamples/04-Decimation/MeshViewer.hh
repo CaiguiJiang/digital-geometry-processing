@@ -90,6 +90,7 @@ public:
   float priority(Mesh::HalfedgeHandle _heh);
   void  decimate(unsigned int _n_vertices);
   void  enqueue_vertex(Mesh::VertexHandle vh);
+  void  dequeue_vertex(Mesh::VertexHandle vh);
 
   // access quadric of vertex _vh
 	Quadricd& quadric(Mesh::VertexHandle _vh) 
