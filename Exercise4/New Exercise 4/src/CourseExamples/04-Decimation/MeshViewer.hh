@@ -47,7 +47,7 @@
 #include <OpenMesh/Core/Mesh/Types/TriMesh_ArrayKernelT.hh>
 #include "QuadricT.hh"
 #include <set>
-
+#include <fstream>
 
 
 
@@ -60,9 +60,10 @@ class MeshViewer : public GlutExaminer
 {
 
 protected:
-
+	std::fstream out;
   typedef OpenMesh::TriMesh_ArrayKernelT<>  Mesh;
   int percentage_;
+  
 public:
    
   /// default constructor
@@ -83,6 +84,7 @@ public:
   void  init();
 
   void CalculateVertexQuadric( Mesh::VertexHandle vh );
+  void CalculateVertexPriority( Mesh::VertexHandle vh );
 
   bool  is_collapse_legal(Mesh::HalfedgeHandle _hh);
   float priority(Mesh::HalfedgeHandle _heh);
@@ -109,6 +111,7 @@ protected:
   OpenMesh::VPropHandleT<Quadricd>                vquadric;
   OpenMesh::VPropHandleT<float>                   vprio;
   OpenMesh::VPropHandleT<Mesh::HalfedgeHandle>  vtarget;
+  OpenMesh::HPropHandleT<bool>		vmydeletedstatus;
 
   struct QueueVertex{
 	  Mesh::VertexHandle v;
@@ -131,15 +134,13 @@ protected:
 
 	std::set<QueueVertex, VertexCmp>  queue;
 
-	Mesh::Normal CalculateNormal( VertexHandle a, VertexHandle b, VertexHandle c, Mesh::VertexHandle v0 )
+	Mesh::Normal CalculateNormal( VertexHandle a, VertexHandle b, VertexHandle c)
 	{	
 		Mesh::Point pa, pb, pc;
 		pa = mesh_.point(a);
 		pb = mesh_.point(b);
 		pc = mesh_.point(c);
-		if (a == v0) return CalculateNormal(pa,pb,pc);
-		else if(b == v0) return CalculateNormal(pb,pa,pc);
-		else return CalculateNormal(pc,pa,pb);	
+		return CalculateNormal(pa,pb,pc);
 	}
 
 	Mesh::Normal CalculateNormal( VertexHandle a, VertexHandle b, VertexHandle c, Mesh::VertexHandle v0, Mesh::Point p1 )
@@ -149,14 +150,14 @@ protected:
 		pb = mesh_.point(b);
 		pc = mesh_.point(c);
 		if (a == v0) return CalculateNormal(p1,pb,pc);
-		else if (b == v0) return CalculateNormal(p1,pa,pc);
-		else return CalculateNormal(p1,pa,pb);	
+		else if (b == v0) return CalculateNormal(pa,p1,pc);
+		else return CalculateNormal(pa,pb,p1);	
 	}
 
 	Mesh::Normal CalculateNormal( Mesh::Point a, Mesh::Point b, Mesh::Point c)
 	{
-		OpenMesh::Vec3f v1 = a - b;
-		OpenMesh::Vec3f v2 = a - c;
+		OpenMesh::Vec3f v1 = b - a;
+		OpenMesh::Vec3f v2 = c - a;
 		return cross(v1,v2).normalize();
 	}
 
