@@ -1,11 +1,8 @@
-Microsoft Visual Studio Solution File, Format Version 10.00
-# Visual Studio 2008
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "OpenMesh", "OpenMesh\OpenMesh.vcproj", "{90CEDDB6-32C4-49BD-AAC5-CE03E533BFDD}"
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "OpenMesh", "OpenMesh\OpenMesh.vcxproj", "{90CEDDB6-32C4-49BD-AAC5-CE03E533BFDD}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "04-Decimation", "03-Smoothing\03-Smoothing.vcproj", "{74AF83EB-CAD0-4487-936C-951B33A09946}"
-	ProjectSection(ProjectDependencies) = postProject
-		{90CEDDB6-32C4-49BD-AAC5-CE03E533BFDD} = {90CEDDB6-32C4-49BD-AAC5-CE03E533BFDD}
-	EndProjectSection
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "04-Decimation", "03-Smoothing\03-Smoothing.vcxproj", "{74AF83EB-CAD0-4487-936C-951B33A09946}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

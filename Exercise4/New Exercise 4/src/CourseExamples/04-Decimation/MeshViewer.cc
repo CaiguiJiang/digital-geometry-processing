@@ -506,13 +506,26 @@ float MeshViewer::priority(Mesh::HalfedgeHandle _heh)
 
 
 //-----------------------------------------------------------------------------
-
+void MeshViewer::dequeue_vertex(Mesh::VertexHandle _vh)
+{
+	QueueVertex qv;
+	qv.v=_vh; qv.prio=priority(_vh);
+	if (priority(_vh) != -1.0) 
+	{
+		out << "Erasing Vertex " << qv.v << " from the queue with priority " << qv.prio << std::endl;
+		queue.erase(qv);
+		priority(_vh) = -1.0;
+	}
+	else
+	{
+		std::cout << "dequeue_vertex: Vertex not removed from queue. Priority = " << priority(_vh) << std::endl;
+	}
+}
 
 void MeshViewer::enqueue_vertex(Mesh::VertexHandle _vh)
 {
-	float                   prio, min_prio(FLT_MAX);
+	float prio, min_prio(FLT_MAX);
 	Mesh::HalfedgeHandle  min_hh;
-
 
 	// find best out-going halfedge
 	for (Mesh::VOHIter vh_it(mesh_, _vh); vh_it; ++vh_it)
@@ -534,13 +547,13 @@ void MeshViewer::enqueue_vertex(Mesh::VertexHandle _vh)
 	qv.v=_vh; qv.prio=priority(_vh);
 	if (priority(_vh) != -1.0) 
 	{
-		out << "Erasing Vertex " << qv.v << " from the queue with priority " << qv.prio << std::endl;
+		std::cout << "enqueue_vertex: Vertex "<< qv.v << " removed from the queue with priority " << qv.prio << std::endl;
 		queue.erase(qv);
 		priority(_vh) = -1.0;
 	}
 	else
 	{
-		std::cout << "Vertex not removed from queue. Priority = " << priority(_vh) << std::endl;
+		std::cout << "enqueue_vertex: Vertex not removed from queue. Priority = " << priority(_vh) << std::endl;
 	}
 
 	if (min_hh.is_valid()) 
@@ -582,26 +595,32 @@ void MeshViewer::decimate(unsigned int _n_vertices)
 	{
 
 		//QueueVertex 
-std::set<QueueVertex, VertexCmp>::iterator sIterator = queue.begin();
-QueueVertex qv = *sIterator;
-queue.erase(sIterator);
-hh = target(qv.v);
-//if halfEdge wasn't deleted
-if (! mesh_.property(vmydeletedstatus, hh)){
-//if collapse is legal
-if (is_collapse_legal(hh)){
-mesh_.collapse(hh);
-mesh_.property(vmydeletedstatus, hh) = true;
+		std::set<QueueVertex, VertexCmp>::iterator sIterator = queue.begin();
+		QueueVertex qv = *sIterator;
+		queue.erase(sIterator);
+		hh = target(qv.v);
+		//if halfEdge wasn't deleted
+		if (! mesh_.property(vmydeletedstatus, hh)){
+			//if collapse is legal
+			if (is_collapse_legal(hh)){
+				mesh_.collapse(hh);
+				mesh_.property(vmydeletedstatus, hh) = true;
 
-for (vv_it = mesh_.vv_iter( qv.v ); vv_it; ++vv_it) {
-//tempUpdate(vv_it);
-enqueue_vertex(vv_it);
-}
+				for (vv_it = mesh_.vv_iter( qv.v ); vv_it; ++vv_it) {
+					//tempUpdate(vv_it);
+					dequeue_vertex(vv_it.handle());
+					CalculateVertexQuadric(vv_it.handle());					
+				}
 
-nv --;
-}
-}
-}
+				for (vv_it = mesh_.vv_iter( qv.v ); vv_it; ++vv_it) {
+					CalculateVertexPriority(vv_it.handle());					
+					enqueue_vertex(vv_it.handle());
+				}
+				nv --;
+				}
+			std::cout << queue.size() << std::endl;
+		}
+	}
 
 	//	one_ring.clear();
 	//	std::cout << "# Vertices reduced to " << nv << ". " << queue.size() << " vertices remain in queue." << std::endl;		
