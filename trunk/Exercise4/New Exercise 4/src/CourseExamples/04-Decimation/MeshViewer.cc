@@ -49,7 +49,7 @@
 //#include <unistd.h> //in linux version this header file was included. Removed for MSVC version
 #include <float.h>
 #include "OpenMesh/Tools/Geometry/QuadricT.hh"
-
+#include <assert.h>
 
 //== IMPLEMENTATION ========================================================== 
 
@@ -58,6 +58,7 @@ MeshViewer::
 MeshViewer(const char* _title, int _width, int _height)
   : GlutExaminer(_title, _width, _height)
 {
+		out.open("C:\\11\\DGP.out", std::fstream::out);
   mesh_.request_face_normals();
   mesh_.request_vertex_normals();
 
@@ -75,6 +76,7 @@ MeshViewer(const char* _title, int _width, int _height)
   mesh_.add_property(vquadric);
   mesh_.add_property(vprio);
   mesh_.add_property(vtarget);
+  mesh_.add_property(vmydeletedstatus);
   percentage_=50;
 }
 
@@ -86,6 +88,7 @@ bool
 MeshViewer::
 open_mesh(const char* _filename)
 {
+
   // load mesh
   if (OpenMesh::IO::read_mesh(mesh_, _filename))
   {
@@ -330,7 +333,13 @@ void MeshViewer::init()
 	{
 		Mesh::VertexHandle vh = v_it.handle();
 		CalculateVertexQuadric(vh);
-	}
+	}	
+
+	for (v_it=mesh_.vertices_begin(); v_it != v_end; ++v_it)
+	{
+		Mesh::VertexHandle vh = v_it.handle();
+		CalculateVertexPriority(vh);
+	}	
 }
 
 
@@ -356,7 +365,18 @@ void MeshViewer::CalculateVertexQuadric( Mesh::VertexHandle vh )
 		{
 			std::cout << "Calculating Quadric of a vertex using a degenerate vertex!" << std::endl;
 		}
-		Mesh::Normal n = mesh_.normal(vf_it.handle());
+
+		Mesh::Point pa = mesh_.point(a_);
+		Mesh::Point pb = mesh_.point(b_);
+		Mesh::Point pc = mesh_.point(c_);
+
+		OpenMesh::Vec3f v = cross((pb - pa),(pc - pa));
+
+		Mesh::Normal n = v.normalize();//mesh_.normal(vf_it.handle());
+		//Mesh::Normal n1 = mesh_.normal(vf_it.handle());
+
+		//std::cout << "Calculated normal: " << n << std::endl;
+		//std::cout << "Original normal: " << n1 << std::endl;
 
 		double a = n[0];
 		double b = n[1];
@@ -365,10 +385,32 @@ void MeshViewer::CalculateVertexQuadric( Mesh::VertexHandle vh )
 		Quadricd q(a,b,c,d);
 
 		quadric(vh) += q;			
-	}		
+	}	
 }
 
 
+
+void MeshViewer::CalculateVertexPriority( Mesh::VertexHandle vh )
+{
+	float min_prio = FLT_MAX;
+	bool foundEdge = false;
+	// find best out-going halfedge
+	for (Mesh::VOHIter vh_it(mesh_, vh); vh_it; ++vh_it)
+	{
+		if (is_collapse_legal(vh_it))
+		{
+			foundEdge = true;
+			float prio = priority(vh_it);
+			if (prio >= -1.0 && prio < min_prio)
+			{
+				min_prio = prio;
+			}
+		}
+	}
+	
+	priority(vh) = foundEdge ? min_prio : -1.0;
+	out << "Priority of " << vh << " was set to " << priority(vh) << std::endl;
+}
 bool MeshViewer::is_collapse_legal(Mesh::HalfedgeHandle _hh)
 {
 	// collect vertices
@@ -412,10 +454,23 @@ bool MeshViewer::is_collapse_legal(Mesh::HalfedgeHandle _hh)
 		VertexHandle b = cfv_it.handle(); ++cfv_it;
 		VertexHandle c = cfv_it.handle();
 		
-		Mesh::Normal n_old = CalculateNormal(a,b,c,v0);
+		if (mesh_.status(a).deleted() ||
+			mesh_.status(b).deleted() ||
+			mesh_.status(c).deleted())
+		{
+			std::cout << " Degenerate triangle. ignoring. " << std::endl;
+			continue;
+		}
+
+		Mesh::Normal n_old = CalculateNormal(a,b,c);
 		Mesh::Normal n_new = CalculateNormal(a,b,c,v0,p1);
 
 		double dot_product = dot(n_old, n_new);
+
+		//std::cout << "n_old = " << n_old << std::endl;
+		//std::cout << "n_new = " << n_new << std::endl;
+		//std::cout << "dot_product = " << acos(dot_product) << std::endl;
+
 		if (acos(dot_product) > 0.78539816339744830961566084581988) 
 		{
 			return false;
@@ -479,8 +534,13 @@ void MeshViewer::enqueue_vertex(Mesh::VertexHandle _vh)
 	qv.v=_vh; qv.prio=priority(_vh);
 	if (priority(_vh) != -1.0) 
 	{
+		out << "Erasing Vertex " << qv.v << " from the queue with priority " << qv.prio << std::endl;
 		queue.erase(qv);
 		priority(_vh) = -1.0;
+	}
+	else
+	{
+		std::cout << "Vertex not removed from queue. Priority = " << priority(_vh) << std::endl;
 	}
 
 	if (min_hh.is_valid()) 
@@ -489,6 +549,7 @@ void MeshViewer::enqueue_vertex(Mesh::VertexHandle _vh)
 		target(_vh)   = min_hh;
 		qv.prio=min_prio;
 		queue.insert(qv);
+		out << "Vertex " << qv.v << " added to queue with priority " << qv.prio << std::endl;
 	}
 }
 
@@ -519,35 +580,61 @@ void MeshViewer::decimate(unsigned int _n_vertices)
 	
 	while (nv > _n_vertices && !queue.empty())
 	{
-		std::cout << "# Vertices reduced to " << nv << ". " << queue.size() << " vertices remain in queue." << std::endl;		
-		from = it->v;				
-		hh = target(from);
-		if (is_collapse_legal(hh))
-		{
-			queue.erase(it);
-			it = queue.begin();
 
-			for (vv_it = mesh_.vv_iter(from); vv_it; ++vv_it)
-			{
-				one_ring.push_back(vv_it.handle());
-			}
+		//QueueVertex 
+std::set<QueueVertex, VertexCmp>::iterator sIterator = queue.begin();
+QueueVertex qv = *sIterator;
+queue.erase(sIterator);
+hh = target(qv.v);
+//if halfEdge wasn't deleted
+if (! mesh_.property(vmydeletedstatus, hh)){
+//if collapse is legal
+if (is_collapse_legal(hh)){
+mesh_.collapse(hh);
+mesh_.property(vmydeletedstatus, hh) = true;
 
-			mesh_.collapse(hh);
+for (vv_it = mesh_.vv_iter( qv.v ); vv_it; ++vv_it) {
+//tempUpdate(vv_it);
+enqueue_vertex(vv_it);
+}
+
+nv --;
+}
+}
+}
+
+	//	one_ring.clear();
+	//	std::cout << "# Vertices reduced to " << nv << ". " << queue.size() << " vertices remain in queue." << std::endl;		
+	//	from = it->v;				
+	//	hh = target(from);
+	//	if (is_collapse_legal(hh))
+	//	{
+	//		queue.erase(it);
+	//		nv--;
+	//		it = queue.begin();
+//
+//			for (vv_it = mesh_.vv_iter(from); vv_it; ++vv_it)
+//			{
+//				one_ring.push_back(vv_it.handle());
+//			}
+//
+//			mesh_.collapse(hh);
 			
-			for (or_it = one_ring.begin(); or_it != one_ring.end(); ++or_it)
-			{
-				if (mesh_.status(*or_it).deleted()) continue;				
-				CalculateVertexQuadric(*or_it);
-				enqueue_vertex(*or_it);
-			}
-			nv--;
-		}
-		else 
-		{
-			//std::cout << "Illegal collapse!" << std::endl;
-			it++;
-		}
-	}
+//			for (or_it = one_ring.begin(); or_it != one_ring.end(); ++or_it)
+//			{
+//				if (mesh_.status(*or_it).deleted()) continue;				
+//				CalculateVertexQuadric(*or_it);
+//				enqueue_vertex(*or_it);
+//				CalculateVertexPriority(*or_it);
+//			}
+//		}
+//		else 
+//		{
+//			std::cout << "Illegal collapse!" << std::endl;
+//			queue.erase(it);
+//			it = queue.begin();
+//		}
+//	}
 	// clean up
 	queue.clear();
 
