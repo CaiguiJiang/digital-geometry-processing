@@ -60,7 +60,7 @@ class MeshViewer : public GlutExaminer
 {
 
 protected:
-	std::fstream out;
+	//std::fstream out;
   typedef OpenMesh::TriMesh_ArrayKernelT<>  Mesh;
   int percentage_;
   
@@ -161,8 +161,6 @@ protected:
 		OpenMesh::Vec3f v2 = c - a;
 		return cross(v1,v2).normalize();
 	}
-
-  
 };
 
 
